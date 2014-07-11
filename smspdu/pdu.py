@@ -141,14 +141,21 @@ class SMS_GENERIC(object):
         TP-(Originating|Destination)-Address values for the supplied
         address string.
         '''
+        # Unknown (e.g. 0791234567)
+        # This is the behaviour of all productive GSM networks I know about.
         if re.match('^\d+$', address):
-            # phone number
-            # Type-of-Address == 91         (international number)
+            tp_al = len(address)
+            tp_toa = 0x81
+            packed = packPhoneNumber(address)
+        # International number (e.g. +41791234567)
+        elif re.match('^\+\d+$', address):
+            # cut off the prefixed +
+            address = address[1:]
             tp_al = len(address)
             tp_toa = 0x91
             packed = packPhoneNumber(address)
+        # Alphanumeric number (e.g. pizza)
         else:
-            # Type-of-Address == D0         (alphanumeric)
             c = gsm0338.Codec()
             l, packed = pack7bit(c.encode(address, 'replace'))
             tp_al = len(packed) * 2
