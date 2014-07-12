@@ -246,6 +246,12 @@ class SMS_GENERIC(object):
         return user_data, headerlen, headers
 
     @staticmethod
+    def get_raw_udh(user_data):
+        """Returns the raw UDH as an octet string"""
+        headerlen = ord(user_data[0])
+        return user_data[0:headerlen + 2]
+
+    @staticmethod
     def determineUD(user_data, tp_dcs, user_data_headers):
         '''Figure the TP-User-Data content and generate the PDU
         parameters tp_udhi, tp_dcs, tp_udl and tp_ud.
@@ -401,6 +407,10 @@ class SMS_DELIVER(SMS_GENERIC):
         self.datestamp = datestamp or time.time()
         self.user_data = user_data
         self.user_data_headers = user_data_headers
+        if tp_udhi:
+            self.raw_udh = SMS_GENERIC.get_raw_udh(tp_ud)
+        else:
+            self.raw_udh = ''
 
     @classmethod
     def create(cls, sender, recipient, user_data, datestamp=None,
@@ -605,6 +615,10 @@ class SMS_SUBMIT(SMS_GENERIC):
         self.datestamp = datestamp or time.time()
         self.user_data = user_data
         self.user_data_headers = user_data_headers
+        if tp_udhi:
+            self.raw_udh = SMS_GENERIC.get_raw_udh(tp_ud)
+        else:
+            self.raw_udh = ''
 
     @classmethod
     def create(cls, sender, recipient, user_data, datestamp=None,
