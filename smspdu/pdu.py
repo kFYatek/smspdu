@@ -15,6 +15,8 @@ import re
 import time
 import unicodedata
 import gsm0338
+# Workaround for a bug in time.strptime()
+import _strptime  # noqa
 
 SMS_TYPES = 'SMS-DELIVER SMS-SUBMIT SMS-STATUS-REPORT RESERVED'.split()
 
