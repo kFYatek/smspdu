@@ -249,7 +249,7 @@ class SMS_GENERIC(object):
     def get_raw_udh(user_data):
         """Returns the raw UDH as an octet string"""
         headerlen = ord(user_data[0])
-        return user_data[0:headerlen + 2]
+        return user_data[0:headerlen + 1]
 
     @staticmethod
     def determineUD(user_data, tp_dcs, user_data_headers):
