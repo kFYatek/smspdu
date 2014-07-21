@@ -452,6 +452,7 @@ class SMS_DELIVER(SMS_GENERIC):
 
         # determine TP-Address-Length and TP-Type-of-Address
         tp_al, tp_toa, tp_oa = cls.determineAddress(sender)
+        sender = sender.lstrip('+')
 
         return cls(tp_mti, tp_mms, tp_rp, tp_udhi, tp_sri, tp_al, tp_toa,
             sender, tp_pid, tp_dcs, tp_scts, tp_udl, tp_ud, recipient,
@@ -672,6 +673,7 @@ class SMS_SUBMIT(SMS_GENERIC):
 
         # determine TP-Address-Length and TP-Type-of-Address
         tp_al, tp_toa, tp_da = cls.determineAddress(recipient)
+        recipient = recipient.lstrip('+')
 
         return cls(tp_mti, tp_rd, tp_vpf, tp_rp, tp_udhi, tp_srr, tp_mr,
             tp_al, tp_toa, recipient, tp_pid, tp_dcs, tp_vp, tp_udl, tp_ud,
@@ -835,6 +837,7 @@ class SMS_SUBMIT(SMS_GENERIC):
         And of course we lose the TP-Validity-Period information.
         """
         tp_al, tp_toa, tp_oa = self.determineAddress(self.sender)
+        self.sender = self.sender.lstrip('+')
         tp_scts = time.strftime('%y%m%d%H%M%S00',
             time.localtime(self.datestamp))
         return SMS_DELIVER(
