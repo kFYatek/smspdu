@@ -47,7 +47,7 @@ class Codec(codecs.Codec):
                     elif errors == 'ignore':
                         pass
                     else: raise UnicodeError("unknown error handling")
-        return ''.join([chr(x) for x in result])
+        return bytes(result)
 
     def decode(self, input, errors = 'strict'):
         result = []
@@ -55,20 +55,19 @@ class Codec(codecs.Codec):
         while index < len(input):
             c = input[index]
             index += 1
-            if c == '\x1b':
+            if c == 0x1b:
                 if index < len(input):
                     c = input[index]
                     index += 1
                     # try looking up the escaped encoding map but revert
                     # to the normal encoding map give up if the input is
                     # crap (the correct behavior in at least one case)
-                    oc = ord(c)
-                    if oc in extra_decoding_map:
-                        result.append(extra_decoding_map[oc])
-                    elif oc in decoding_map:
-                        result.append(decoding_map[oc])
+                    if c in extra_decoding_map:
+                        result.append(extra_decoding_map[c])
+                    elif c in decoding_map:
+                        result.append(decoding_map[c])
                     else:
-                        raise ValueError('invalid escape code 0x%02x'%oc)
+                        raise ValueError('invalid escape code 0x%02x'%c)
                 elif errors == 'replace':
                     result.append(ord('?'))
                 elif errors == 'ignore':
@@ -77,7 +76,7 @@ class Codec(codecs.Codec):
                     raise ValueError('truncated data')
             else:
                 try:
-                    result.append(decoding_map[ord(c)])
+                    result.append(decoding_map[c])
                 except KeyError:
                     if errors == 'replace':
                         result.append(ord('?'))

@@ -10,7 +10,7 @@ class SMS_PDU_Test(unittest.TestCase):
 
     def test_encoding_7_bit(self):
         from smspdu.pdu import pack7bit
-        input = 'hellohello'
+        input = b'hellohello'
         # h = 0b1101000
         # e = 0b1100101
         # l = 0b1101100
@@ -19,47 +19,46 @@ class SMS_PDU_Test(unittest.TestCase):
 
         # packed is    11101000 00110010 10011011 11111101 01000110 
         output_bytes =[0xE8,    0x32,    0x9B,    0xFD,    0x46,    0x97, 0xD9, 0xEC, 0x37]
-        output = ''.join(chr(x) for x in output_bytes)
+        output = bytes(output_bytes)
         self.assertEqual(pack7bit(input)[1], output)
 
     def test_encoding_7_bit_header(self):
         from smspdu.pdu import pack7bit
-        input = 'abcd'
+        input = b'abcd'
         # a = 0b1100001
         # b = 0b1100010
         # c = 0b1100011
         # d = 0b1100100
         # packed is     01100001 11110001 10011000 00001100
         output_bytes = [0x61,    0xf1,    0x98,    0x0c]
-        output = ''.join(chr(x) for x in output_bytes)
+        output = bytes(output_bytes)
         self.assertEqual(pack7bit(input)[1], output)
 
         # packed is     01000000 01011000 00111100 00100110 00000011
 
         output_bytes = [0x40,    0x58,    0x3c,    0x26,    0x03]
-        output = ''.join(chr(x) for x in output_bytes)
+        output = bytes(output_bytes)
         self.assertEqual(pack7bit(input, 1)[1], output)
 
     def test_decoding_7_bit(self):
         from smspdu.pdu import unpack7bit
         input_bytes = [0xE8, 0x32, 0x9B, 0xFD, 0x46, 0x97, 0xD9, 0xEC, 0x37]
-        input = ''.join(chr(x) for x in input_bytes)
-        output = 'hellohello'
+        input = bytes(input_bytes)
+        output = b'hellohello'
         self.assertEqual(unpack7bit(input), output)
 
     def test_nibbleswap(self):
         from smspdu.pdu import nibbleswap
         input_bytes =[0xE8, 0x32, 0x9B, 0xFD, 0x46, 0x97, 0xD9, 0xEC, 0x37]
-        input = ''.join(chr(x) for x in input_bytes)
+        input = bytes(input_bytes)
         output_bytes =[0x8E, 0x23, 0xB9, 0xDF, 0x64, 0x79, 0x9D, 0xCE, 0x73]
-        output = ''.join(chr(x) for x in output_bytes)
+        output = bytes(output_bytes)
         self.assertEqual(nibbleswap(input), output)
 
     def test_phoneNumberPacking(self):
         from smspdu.pdu import unpackPhoneNumber, packPhoneNumber
         ae = self.assertEqual
-        input = ''.join([chr(x) for x in
-                                (0x72, 0x38, 0x88, 0x09, 0x00, 0xF1)])
+        input = bytes([0x72, 0x38, 0x88, 0x09, 0x00, 0xF1])
         output = '27838890001'
         ae(unpackPhoneNumber(input), output)
         ae(packPhoneNumber(output), input)
@@ -103,8 +102,8 @@ class SMS_PDU_Test(unittest.TestCase):
 
     def test_gsm_encode(self):
         c = smspdu.gsm0338()
-        self.assertEqual(c.encode('hello'), 'hello')
-        self.assertEqual(c.encode('\u20AC'), '\x1b\x65')
+        self.assertEqual(c.encode('hello'), b'hello')
+        self.assertEqual(c.encode('\u20AC'), b'\x1b\x65')
         self.assertRaises(UnicodeError, c.encode, '\u20AD')
 
     def test_tpdu_decode(self):
@@ -161,7 +160,7 @@ class SMS_PDU_Test(unittest.TestCase):
         s = smspdu.SMS_SUBMIT.fromPDU(
             '550d0b911614261771f000f5a78c0b050423f423f40003010201424547494e3a56434152440d0a56455253494f4e3a322e310d0a4e3a4d650d0a54454c3b505245463b43454c4c3b564f4943453a2b36313431363237313137300d0a54454c3b484f4d453b564f4943453a2b36313339353337303437310d0a54454c3b574f524b3b564f4943453a2b36313339363734373031350d0a454e443a',
             '447924449999')
-        ae(s.user_data, 'BEGIN:VCARD\r\nVERSION:2.1\r\nN:Me\r\nTEL;PREF;CELL;VOICE:+61416271170\r\nTEL;HOME;VOICE:+61395370471\r\nTEL;WORK;VOICE:+61396747015\r\nEND:')
+        ae(s.user_data, b'BEGIN:VCARD\r\nVERSION:2.1\r\nN:Me\r\nTEL;PREF;CELL;VOICE:+61416271170\r\nTEL;HOME;VOICE:+61395370471\r\nTEL;WORK;VOICE:+61396747015\r\nEND:')
 
     def test_sms_decode_wackychars2(self):
         # more wacky characters
@@ -203,14 +202,14 @@ class SMS_PDU_Test(unittest.TestCase):
         s1 = smspdu.SMS_SUBMIT.fromPDU(part1, '447924449999')
         ae(s1.concatInfo(), dict(size=16, ref=5, count=3, seq=1))
         ae(s1.user_data, 'The quick brown fox jumped over the jazz dog. The quick brown fox jumped over the jazz dog. The quick brown fox jumped over the jazz dog. The quick brow')
-        ae(s1.user_data_headers, [(8, [0, 5, 3, 1])])
+        ae(s1.user_data_headers, [(8, bytes([0, 5, 3, 1]))])
         part2 = '51060b911614123234f10000ffa0060804000503026e90f98d07a9eb6d78990c7adbcb72101d5d06a9c37a3d88fc3ebb4054741914afa7c76b9058febebb41e6371ea4aeb7e16532e86d2fcb41747419a40eebf520f2fbec0251d165903aacd783c4f2f7dd0d22bfcf2075bd0d2f93416f7b590ea2a3cba0783d3d5e83cc6fbc0b14140e8945e31199542e994de7131a954aa7d4aaf58acd6a5d'.upper()
         s2 = smspdu.SMS_SUBMIT.fromPDU(part2, '447924449999')
-        ae(s2.user_data_headers, [(8, [0, 5, 3, 2])])
+        ae(s2.user_data_headers, [(8, bytes([0, 5, 3, 2]))])
         ae(s2.user_data, 'n fox jumped over the jazz dog. The quick brown fox jumped over the jazz dog. The jazz brown dog jumped over the quick fox. ABCDEFGHIJKLMNOPQRRSTUVWXYZ.')
         part3 = '51070b911614123234f10000ff3706080400050303202aba0c8ad7d3e335482c7fdfdd20f31b0f52d7dbf03219f4b697e5203aba0c6287f57910f97d768100'.upper()
         s3 = smspdu.SMS_SUBMIT.fromPDU(part3, '447924449999')
-        ae(s3.user_data_headers, [(8, [0, 5, 3, 3])])
+        ae(s3.user_data_headers, [(8, bytes([0, 5, 3, 3]))])
         ae(s3.user_data, ' The quick brown fox jumped over the lazy dog. ')
 
         # check re-encoding
@@ -237,11 +236,11 @@ class SMS_PDU_Test(unittest.TestCase):
         ae = self.assertEqual
         part1 = '51670b911604578652f90000a7a0050003e002019a6fb91b342fe3f3e27a9b0542bfef2039a8fe0325e7a0fb5bbe0689ebf3fc0f742d83ece9799a0ea2a3cba0793bcc6697e774d0f85d77d3e579d03d6d06d1d16590387d2ecfe9a031ba2e1fa3413272380f42a1dfed32e86d06d1d16510fc0d2fa74026101d5d068ddf6cf67b3e2fd7db2014390c3287dbeffa1cd40ee341e976780e3ab3c3'.upper()
         s1 = smspdu.SMS_SUBMIT.fromPDU(part1, '447924449999')
-        ae(s1.user_data_headers, [(0, [224, 2, 1])])
+        ae(s1.user_data_headers, [(0, bytes([224, 2, 1]))])
         ae(s1.user_data, 'Morn sexybum, how r u? Is work busy? We visit the smallest country wif the bigest church 2day (home of the pope) & the collosseum (da famous max imas gla')
         part2 = '51680b911604578652f90000a73b050003e00202c8e930fd2d778184f5349b9c769fe7203a3a4c07c94132180c9697cf416f36390462d6eda03a88fda6cf41d82708'.upper()
         s2 = smspdu.SMS_SUBMIT.fromPDU(part2, '447924449999')
-        ae(s2.user_data_headers, [(0, [224, 2, 2])])
+        ae(s2.user_data_headers, [(0, bytes([224, 2, 2]))])
         ae(s2.user_data, 'diator. Buildings that r 2000yrs old! Luv u lots XO ')
 
         # check re-encode
@@ -287,7 +286,7 @@ class SMS_PDU_Test(unittest.TestCase):
     def test_sim_download(self):
         t = '0408D0E5759A0E7FF6907090307513000824010101BB400101'
         tp = smspdu.SMS_DELIVER.fromPDU(t, 'test')
-        message = '\x24\x01\x01\x01\xBB\x40\x01\x01'
+        message = b'\x24\x01\x01\x01\xBB\x40\x01\x01'
         p = smspdu.SMS_DELIVER.create('ekit', 'test', message, tp_pid=0x7F,
             tp_dcs=0xF6, datestamp=tp.datestamp)
         self.assertEqual(p.toPDU(),
@@ -315,12 +314,12 @@ class SMS_PDU_Test(unittest.TestCase):
 
     def test_numericAddress(self):
         self.assertEqual(smspdu.SMS_SUBMIT.determineAddress('123'),
-            (3, 0x81, '!\xf3'))
+            (3, 0x81, b'!\xf3'))
 
     def test_textAddress(self):
         from smspdu.pdu import pack7bit
         self.assertEqual(smspdu.SMS_SUBMIT.determineAddress('1test'),
-            (10, 0xd0, pack7bit('1test')[1]))
+            (10, 0xd0, pack7bit(b'1test')[1]))
 
     def test_dcs0xd1encoding(self):
         inpdu = '040AD1404141414100009011711262200001D7'
@@ -360,7 +359,7 @@ class SMS_PDU_Test(unittest.TestCase):
         # not even going to try to construct a real extended VP - any old 7
         # octets will do
         vp = list(map(ord, 'ABCDEFG'))
-        hvp = binascii.hexlify(''.join(chr(i) for i in vp))
+        hvp = binascii.hexlify(bytes(i for i in vp))
 
         # construct PDU
         p = smspdu.SMS_SUBMIT.create('eKit', 'test', 'hellohello',
@@ -389,7 +388,7 @@ class SMS_PDU_Test(unittest.TestCase):
         self.assertEqual(p2.toPDU(), sp)
 
     def test_udh5(self):
-        smspdu.SMS_DELIVER.determineUD('hello', 0, [(5, [35, 244, 0, 0])])
+        smspdu.SMS_DELIVER.determineUD('hello', 0, [(5, bytes([35, 244, 0, 0]))])
 
     def test_tp_scts(self):
         self._test_scts('011223095342+04')
@@ -469,7 +468,7 @@ class DateTest(unittest.TestCase):
     def test_pack(self):
         # example 3.16 from The Book, p74
         from smspdu.pdu import pack_date
-        d = list(map(ord, pack_date('011223095342+04')))
+        d = list(b for b in pack_date('011223095342+04'))
         self.assertEqual(d, [16, 33, 50, 144, 53, 36, 64])
 
 if __name__ == '__main__':

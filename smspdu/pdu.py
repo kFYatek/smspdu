@@ -14,9 +14,10 @@ the detail of the book.
 import re
 import time
 import unicodedata
+
 from . import gsm0338
+
 # Workaround for a bug in time.strptime()
-import _strptime  # noqa
 
 SMS_TYPES = 'SMS-DELIVER SMS-SUBMIT SMS-STATUS-REPORT RESERVED'.split()
 
@@ -46,11 +47,11 @@ class PDUData(list):
 
     def octets(self, num=None):
         if num is not None:
-            bytes = self.bytes(num)
+            octets = self.bytes(num)
         else:
-            bytes = self.bytes(len(self) // 2)
-        return ''.join([chr(int(c1 + c2, 16))
-            for c1, c2 in zip(bytes[::2], bytes[1::2])])
+            octets = self.bytes(len(self) // 2)
+        return b''.join([bytes([int(c1 + c2, 16)])
+            for c1, c2 in zip(octets[::2], octets[1::2])])
 
 
 class SMS_GENERIC(object):
@@ -99,7 +100,6 @@ class SMS_GENERIC(object):
             address = unpack7bit(address, 0)
             c = gsm0338.Codec()
             address = decode_ascii_safe(c.decode(address, 'replace')[0], False)
-            address = address.encode('ascii')
 
             # some phones put bits in the lower nybble of the TOA when
             # sending alphanumeric addresses; this is wrong wrong wrongedy
@@ -125,18 +125,19 @@ class SMS_GENERIC(object):
         # followed by the Address-Value data.
         if self.tp_toa & 0xF0 == 0xD0:
             # alphanumeric, special case
-            l, packed = pack7bit(self.tp_address)
+            c = gsm0338.Codec()
+            l, packed = pack7bit(c.encode(self.tp_address, 'replace'))
             # trailing null byte isn't appreciated in addresses
-            if packed[-1] == '\x00':
+            if packed[-1] == 0:
                 packed = packed[:-1]
         else:
             # phone number, actual digits
             packed = packPhoneNumber(self.tp_address)
             if self.tp_al > len(self.tp_address):
-                packed = '\x00' + packed
+                packed = b'\x00' + packed
 
         # Address-Value data
-        data.extend(['%02X' % ord(c) for c in packed])
+        data.extend(['%02X' % c for c in packed])
         return ''.join(data)
 
     @staticmethod
@@ -215,8 +216,7 @@ class SMS_GENERIC(object):
             user_data, length = c.decode(data)
             user_data = user_data[:actual_udl]
         elif charset == '8bit':  # 8 bit coding is "user defined". S6.2.2
-            user_data = unpack8bit(data)
-            user_data = user_data[:actual_udl]
+            user_data = data[:actual_udl]
         elif charset == 'utf-16':  # UTF-16 aka UCS2, S6.2.3
             try:
                 user_data = unpackUCS2(data)
@@ -237,14 +237,14 @@ class SMS_GENERIC(object):
         headers = []
         headerlen = 0
 
-        headerlen = ord(user_data[0])
+        headerlen = user_data[0]
         header = user_data[1:headerlen + 1]
         user_data = user_data[headerlen + 1:]
         while header:
-            ie = ord(header[0])
-            ielen = ord(header[1])
+            ie = header[0]
+            ielen = header[1]
             val = header[2:2 + ielen]
-            headers.append((ie, [ord(x) for x in val]))
+            headers.append((ie, val))
             header = header[2 + ielen:]
 
         return user_data, headerlen, headers
@@ -252,7 +252,7 @@ class SMS_GENERIC(object):
     @staticmethod
     def get_raw_udh(user_data):
         """Returns the raw UDH as an octet string"""
-        headerlen = ord(user_data[0])
+        headerlen = user_data[0]
         return user_data[0:headerlen + 1]
 
     @staticmethod
@@ -263,14 +263,14 @@ class SMS_GENERIC(object):
         if user_data_headers:
             tp_udhi = 1
 
-            h = ''
+            h = b''
             for ie, val in user_data_headers:
-                h += chr(ie) + chr(len(val)) + ''.join(map(chr, val))
-            tp_ud = chr(len(h)) + h
+                h += bytes([ie, len(val)]) + val
+            tp_ud = bytes([len(h)]) + h
 
         else:
             tp_udhi = 0
-            tp_ud = ''
+            tp_ud = b''
 
         top_nybble = tp_dcs & 0xF0
 
@@ -562,7 +562,7 @@ class SMS_DELIVER(SMS_GENERIC):
 
         # TP-Service-Centre-Time-Stamp
         tp_scts = pack_date(self.tp_scts)
-        tpdu.append(''.join(['%02X' % ord(c) for c in tp_scts]))
+        tpdu.append(''.join(['%02X' % c for c in tp_scts]))
 
         if coloured:
             tpdu.append('\x1b[47;91m')     # bright red
@@ -574,15 +574,15 @@ class SMS_DELIVER(SMS_GENERIC):
             tp_ud = self.tp_ud
             if self.tp_udhi:
                 tpdu.append('\x1b[47;34m')     # bright blue
-                n = ord(tp_ud[0]) + 1
+                n = tp_ud[0] + 1
                 h = tp_ud[:n]
                 tp_ud = tp_ud[n:]
-                tpdu.append(''.join(['%02X' % ord(c) for c in h]))
+                tpdu.append(''.join(['%02X' % c for c in h]))
 
             tpdu.append('\x1b[47;30m')     # black
-            tpdu.append(''.join(['%02X' % ord(c) for c in tp_ud]))
+            tpdu.append(''.join(['%02X' % c for c in tp_ud]))
         else:
-            tpdu.append(''.join(['%02X' % ord(c) for c in self.tp_ud]))
+            tpdu.append(''.join(['%02X' % c for c in self.tp_ud]))
 
         if coloured:
             tpdu.append('\x1b[01;0m')
@@ -725,7 +725,7 @@ class SMS_SUBMIT(SMS_GENERIC):
         if tp_vpf == 2:
             tp_vp = int(tpdu.byte(), 16)
         elif tp_vpf == 1:
-            tp_vp = list(map(ord, tpdu.octets(7)))
+            tp_vp = list(b for b in tpdu.octets(7))
         elif tp_vpf == 3:
             tp_vp = unpackPhoneNumber(tpdu.octets(7))
 
@@ -795,7 +795,7 @@ class SMS_SUBMIT(SMS_GENERIC):
         elif self.tp_vpf == 3:
             # absolute datestamp
             tp_vp = packPhoneNumber(self.tp_vp)
-            tpdu.append(''.join(['%02X' % ord(c) for c in tp_vp]))
+            tpdu.append(''.join(['%02X' % c for c in tp_vp]))
 
         if coloured:
             tpdu.append('\x1b[47;91m')     # bright red
@@ -807,15 +807,15 @@ class SMS_SUBMIT(SMS_GENERIC):
             tp_ud = self.tp_ud
             if self.tp_udhi:
                 tpdu.append('\x1b[47;34m')     # bright blue
-                n = ord(tp_ud[0]) + 1
+                n = tp_ud[0] + 1
                 h = tp_ud[:n]
                 tp_ud = tp_ud[n:]
-                tpdu.append(''.join(['%02X' % ord(c) for c in h]))
+                tpdu.append(''.join(['%02X' % c for c in h]))
 
             tpdu.append('\x1b[47;30m')     # black
-            tpdu.append(''.join(['%02X' % ord(c) for c in tp_ud]))
+            tpdu.append(''.join(['%02X' % c for c in tp_ud]))
         else:
-            tpdu.append(''.join(['%02X' % ord(c) for c in self.tp_ud]))
+            tpdu.append(''.join(['%02X' % c for c in self.tp_ud]))
 
         if coloured:
             tpdu.append('\x1b[0m')
@@ -1070,11 +1070,6 @@ def parse_udhi(data, debug=False):
     return data, headerlen, headers
 
 
-def unpack8bit(bytes):
-    bytes = [ord(x) for x in bytes]
-    return ''.join([chr(x) for x in bytes])
-
-
 def unpackUCS2(bytes):
     return bytes.decode('utf_16_be')
 
@@ -1240,13 +1235,12 @@ _sevenBitMasksUnpack = (
 )
 
 
-def unpack7bit(bytes, hl=0):
+def unpack7bit(octets, hl=0):
     """ Unpack a 7 bit ASCII string that's been packed into an 8 bit string
         Of course, it's &^$*&$ little endian.
 
         See http://www.dreamfabric.com/sms/hello.html for an example
     """
-    bytes = [ord(x) for x in bytes]
     out = []
     if hl == 0:
         curOff = 0
@@ -1261,25 +1255,24 @@ def unpack7bit(bytes, hl=0):
         # capable of displaying the SM itself although the TP-UD Header
         # in the TP-UD field may not be understood. Please kill me now.
         curOff = (7 - ((8 * hl + 1) % 7)) % 7
-    while bytes:
+    while octets:
         masks = _sevenBitMasksUnpack[curOff]
         if len(masks) == 1:
             mask, shift = masks[0]
-            out.append((bytes[0] & mask) >> shift)
+            out.append((octets[0] & mask) >> shift)
         else:
             (mask0, shift0), (mask1, shift1) = masks
-            if len(bytes) == 1:
-                b = ((bytes[0] & mask0) >> shift0)
+            if len(octets) == 1:
+                b = ((octets[0] & mask0) >> shift0)
                 if b:
                     out.append(b)
                 break
             else:
-                out.append(((bytes[0] & mask0) >> shift0)
-                            | ((bytes[1] & mask1) << shift1))
-                bytes = bytes[1:]
+                out.append(((octets[0] & mask0) >> shift0)
+                           | ((octets[1] & mask1) << shift1))
+                octets = octets[1:]
         curOff = (curOff + 7) % 8
-    bytes = ''.join([chr(x) for x in out])
-    return bytes
+    return bytes(out)
 
 
 _sevenBitMasksPack = (
@@ -1326,8 +1319,7 @@ def pack7bit(string, headerlen=0):
     # pack all those pesky septets into one big number
     bignum = 0
     for c in string:
-        septet = ord(c)
-        bignum |= septet << n
+        bignum |= c << n
         n += 7
 
     # now grab octets from that big number, starting from the bottom
@@ -1341,24 +1333,24 @@ def pack7bit(string, headerlen=0):
         m += 8
         n -= 8
 
-    return num_septets, ''.join(map(chr, l))
+    return num_septets, bytes(l)
 
 
 def unpackPhoneNumber(bytes):
     "Turn 'decimal encoded semi-octets' number into normal text"
     bytes = nibbleswap(bytes)
-    out = ['%02x' % (ord(b)) for b in bytes]
+    out = [('%02x' % b) for b in bytes]
     return ''.join(out).rstrip('Ff')
 
 
-def packPhoneNumber(bytes):
+def packPhoneNumber(octets):
     "Turn a perfectly normal phone number into 'decimal encoded semi-octets'"
-    bytes = re.sub(r'[^0-9a-fA-F]', '', bytes)
-    if len(bytes) % 2:
-        bytes += 'F'
-    out = [chr(int(c1 + c2, 16))
-        for c1, c2 in zip(bytes[::2], bytes[1::2])]
-    return nibbleswap(''.join(out))
+    octets = re.sub(r'[^0-9a-fA-F]', '', octets)
+    if len(octets) % 2:
+        octets += 'F'
+    out = bytes([int(c1 + c2, 16)
+                 for c1, c2 in zip(octets[::2], octets[1::2])])
+    return nibbleswap(out)
 
 
 def pack_date(date):
@@ -1401,13 +1393,10 @@ def unpack_date(date):
     return date[:12] + end
 
 
-def nibbleswap(bytes):
+def nibbleswap(octets):
     # How much do I fucking hate SMS TPDU format?
     # nibbleswapping the output is the final indignation
-    bytes = [ord(x) for x in bytes]
-    bytes = [(b & 0xF0) >> 4 | (b & 0x0F) << 4 for b in bytes]
-    bytes = ''.join([chr(x) for x in bytes])
-    return bytes
+    return bytes([(b & 0xF0) >> 4 | (b & 0x0F) << 4 for b in octets])
 
 SMPP_ISO_CHARSETS = {
     3: 'iso-8859-1',
@@ -1529,7 +1518,7 @@ def attempt_encoding(u, limit=160):
     gsm = gsm0338.Codec()
     l = []
     e = []
-    s = ''
+    s = b''
     for c in u:
         # replace all control codes
         if ord(c) < 0x20 and c not in '\r\n':
