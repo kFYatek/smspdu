@@ -17,7 +17,7 @@ class T39(object):
 
         while True:
             d = self.ser.readline()
-            print d
+            print(d)
             if d.startswith("OK"):
                 break
     

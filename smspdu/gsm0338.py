@@ -88,9 +88,9 @@ class Codec(codecs.Codec):
                         raise UnicodeDecodeError('GSM-0338', input, index, index+1,
                             'ordinal not in range(128)')
         try:
-            return u"".join([unichr(x) for x in result]), len(result)
+            return "".join([chr(x) for x in result]), len(result)
         except:
-            print "err", result
+            print("err", result)
             raise
 
 class StreamWriter(Codec,codecs.StreamWriter):
@@ -272,18 +272,18 @@ if __name__=='__main__':
     c = Codec()
     def test(s):
         r = c.decode(c.encode(s))[0]
-        if r != s: print 'in %r != out %r'%(s, r)
-    test(unicode(string.letters))
-    test(u'\u20ac')
-    test(u'\xa0')
+        if r != s: print('in %r != out %r'%(s, r))
+    test(str(string.letters))
+    test('\u20ac')
+    test('\xa0')
     try:
-        test(u'av\u20ad')
-    except Exception, e:
-        print `u'av\u20ad'`, 'raised', e
+        test('av\u20ad')
+    except Exception as e:
+        print(repr('av\u20ad'), 'raised', e)
     try:
-        c.decode(u'café'.encode('utf8'))
-    except Exception, e:
-        print `u'café'`, 'raised', e
+        c.decode('café'.encode('utf8'))
+    except Exception as e:
+        print(repr('café'), 'raised', e)
 
 
 # Copyright (c) 2011 eKit.com Inc (http://www.ekit.com/)

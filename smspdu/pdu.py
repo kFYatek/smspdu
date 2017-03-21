@@ -14,7 +14,7 @@ the detail of the book.
 import re
 import time
 import unicodedata
-import gsm0338
+from . import gsm0338
 # Workaround for a bug in time.strptime()
 import _strptime  # noqa
 
@@ -221,7 +221,7 @@ class SMS_GENERIC(object):
             try:
                 user_data = unpackUCS2(data)
                 user_data = user_data[:actual_udl]
-            except UnicodeDecodeError, e:
+            except UnicodeDecodeError as e:
                 raise PDUDecodeError('PDU corrupted: %s' % e)
         else:
             raise PDUDecodeError('tp_dcs of 0x%02x (%s), charset %s' % (tp_dcs,
@@ -725,7 +725,7 @@ class SMS_SUBMIT(SMS_GENERIC):
         if tp_vpf == 2:
             tp_vp = int(tpdu.byte(), 16)
         elif tp_vpf == 1:
-            tp_vp = map(ord, tpdu.octets(7))
+            tp_vp = list(map(ord, tpdu.octets(7)))
         elif tp_vpf == 3:
             tp_vp = unpackPhoneNumber(tpdu.octets(7))
 
@@ -983,7 +983,7 @@ def describe_tp_dcs(tp_dcs):
     if (tp_dcs & 0xc0) == 0 and tp_dcs & 0x20:
         coding = 'compressed ' + coding
 
-    return ', '.join(filter(None, [group, message_class, coding]))
+    return ', '.join([_f for _f in [group, message_class, coding] if _f])
 
 
 def guess_dcs(message):
@@ -1040,13 +1040,13 @@ def parse_udhi(data, debug=False):
     headerlen = 0
 
     if debug:
-        print "user-data", ' '.join([hex(ord(x)) for x in data])
+        print("user-data", ' '.join([hex(ord(x)) for x in data]))
     headerlen = ord(data[0])
     if debug:
-        print "header len", headerlen
+        print("header len", headerlen)
     header = data[1:headerlen + 1]
     if debug:
-        print "header", ' '.join([hex(ord(x)) for x in header])
+        print("header", ' '.join([hex(ord(x)) for x in header]))
     data = data[headerlen + 1:]
     while header:
         ie = ord(header[0])
@@ -1055,9 +1055,9 @@ def parse_udhi(data, debug=False):
         headers[ie] = ieval
         header = header[2 + ielen:]
     if debug:
-        print "headers", headers
+        print("headers", headers)
 
-    for ie, val in headers.items():
+    for ie, val in list(headers.items()):
         if ie == 0:
             headers[ie] = [ord(x) for x in val]    # reference, max, cnum
         elif ie == 8:
@@ -1152,7 +1152,7 @@ def decompress_user_data(bytes):
     '''
     bytes = bytearray(bytes)
     header = CompressionHeader(bytes)
-    print header
+    print(header)
     TODO
 
 class CompressionHeader:
@@ -1463,7 +1463,7 @@ def remove_accent(u):
         ...what-is-the-best-way-to-remove-accents-in-a-python-unicode-string
     '''
     nkfd_form = unicodedata.normalize('NFKD', u)
-    return u"".join([c for c in nkfd_form if not unicodedata.combining(c)])
+    return "".join([c for c in nkfd_form if not unicodedata.combining(c)])
 
 
 def remove_typography(u):
@@ -1478,16 +1478,16 @@ def remove_typography(u):
     TODO A more complete list of possible substitutions is at
     http://www.cs.sfu.ca/~ggbaker/reference/characters/
     '''
-    BEST = {u'“': '"', u'”': '"', u'‘': "'", u'’': "'", u'–': '-',
-        u'«': '<<', u'»': '>>', u'…': '...', u'™': 'TM', u'`': "'"}
+    BEST = {'“': '"', '”': '"', '‘': "'", '’': "'", '–': '-',
+        '«': '<<', '»': '>>', '…': '...', '™': 'TM', '`': "'"}
     BETTER = dict(BEST)
-    BETTER.update({u'«': '<', u'»': '>'})
+    BETTER.update({'«': '<', '»': '>'})
     GOOD = dict(BETTER)
-    GOOD.update({u'…': '.'})
+    GOOD.update({'…': '.'})
 
     # try the replacements
     for d in BEST, BETTER, GOOD:
-        s = u''.join([d.get(c, c) for c in u])
+        s = ''.join([d.get(c, c) for c in u])
         if len(s) < 160:
             break
     return s
@@ -1499,8 +1499,8 @@ def replace_gsm_doubles(u):
     one that didn't originate from a handset)
     '''
     REPLACE = {'[': '(', ']': ')', '{': '(', '}': ')', '~': '-', '\\': '/',
-        u'\u20ac': 'E'}
-    return u''.join([REPLACE.get(c, c) for c in u])
+        '\u20ac': 'E'}
+    return ''.join([REPLACE.get(c, c) for c in u])
 
 
 def attempt_encoding(u, limit=160):
@@ -1533,7 +1533,7 @@ def attempt_encoding(u, limit=160):
     for c in u:
         # replace all control codes
         if ord(c) < 0x20 and c not in '\r\n':
-            c = u'?'
+            c = '?'
         try:
             t = gsm.encode(c)
         except UnicodeError:
@@ -1556,22 +1556,22 @@ def attempt_encoding(u, limit=160):
     else:
         if e:
             # one last thing to try....
-            s = u''.join(l) + u''.join(e)
+            s = ''.join(l) + ''.join(e)
             s = replace_gsm_doubles(s)
             if len(s) <= 160:
-                return (s, u'')
-        return (u''.join(l), u''.join(e))
+                return (s, '')
+        return (''.join(l), ''.join(e))
 
     # encode using UTF-16
     l = []
     e = list(u)
     while e:
         c = e.pop(0)
-        t = u''.join(l) + c
+        t = ''.join(l) + c
         if len(t.encode('utf16')) > 140:
             break
         l.append(c)
-    return (u''.join(l), u''.join(e))
+    return (''.join(l), ''.join(e))
 
 
 def decode_ascii_safe(s, crlfok=True):
@@ -1590,21 +1590,21 @@ def decode_ascii_safe(s, crlfok=True):
             # newlines just ain't OK in some situations
             continue
         u.append(c)
-    return u''.join(u)
+    return ''.join(u)
 
 def dump(pdu):
     first = int(pdu[0:2], 16)
     tp_mti = first & 0x03  # message type
     if tp_mti == 1:
         p = SMS_SUBMIT.fromPDU(pdu, 'unknown')
-        print
-        print p.toPDU(1)
-        print p.dump()
+        print()
+        print(p.toPDU(1))
+        print(p.dump())
     else:
         p = SMS_DELIVER.fromPDU(pdu, 'unknown')
-        print
-        print p.toPDU(1)
-        print p.dump()
+        print()
+        print(p.toPDU(1))
+        print(p.dump())
 
 if __name__ == '__main__':
     import sys
