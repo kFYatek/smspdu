@@ -111,6 +111,8 @@ class SMS_GENERIC(object):
         # prefix of "00" *usually* means "+" in eurospeak
         if address.startswith('00'):
             address = address[2:]
+        if toa == 0x91:
+            address = '+' + address
         return pl, toa, address
 
     def encodeAddress(self):
@@ -1351,6 +1353,7 @@ def unpackPhoneNumber(bytes):
 
 def packPhoneNumber(bytes):
     "Turn a perfectly normal phone number into 'decimal encoded semi-octets'"
+    bytes = re.sub(r'[^0-9a-fA-F]', '', bytes)
     if len(bytes) % 2:
         bytes += 'F'
     out = [chr(int(c1 + c2, 16))

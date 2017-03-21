@@ -65,20 +65,20 @@ class SMS_PDU_Test(unittest.TestCase):
         ae(packPhoneNumber(output), input)
 
     def test_tpdu_encode(self):
-        p = smspdu.SMS_DELIVER.create('46708251358', 'test', u'hellohello',
-            datestamp=time.mktime((2009, 8, 7, 6, 5, 4, 0, 0, 0)),
+        p = smspdu.SMS_DELIVER.create('+46708251358', 'test', u'hellohello',
+            datestamp=time.mktime((2009, 8, 7, 6, 5, 4, 0, 0, -1)),
             tp_sri=1, tp_mms=0)
         self.assertEquals(p.toPDU(),
                 '200B916407281553F80000908070605040000AE8329BFD4697D9EC37')
         # sanity - check decode matches input
         s = smspdu.SMS_DELIVER.fromPDU(p.toPDU(), '46708251358')
-        self.assertEquals(s.tp_address, u'46708251358')
+        self.assertEquals(s.tp_address, u'+46708251358')
         self.assertEquals(s.tp_scts, u'09080706050400')
         self.assertEquals(s.user_data, u'hellohello')
 
     def test_tpdu_encode_alpha_sender(self):
         p = smspdu.SMS_DELIVER.create('eKit', 'test', u'hellohello',
-            datestamp=time.mktime((2009, 8, 7, 6, 5, 4, 3, 0, 0)),
+            datestamp=time.mktime((2009, 8, 7, 6, 5, 4, 3, 0, -1)),
             tp_sri=1, tp_mms=0)
         self.assertEquals(p.toPDU(),
             '2008D0E5659A0E0000908070605040000AE8329BFD4697D9EC37')
@@ -111,7 +111,7 @@ class SMS_PDU_Test(unittest.TestCase):
         s = smspdu.SMS_SUBMIT.fromPDU(
             '11010b911614261771f000000b0ae8329bfd4697d9ec37',
             '447924449999', 'test')
-        self.assertEquals(s.tp_address, '61416271170')
+        self.assertEquals(s.tp_address, '+61416271170')
         self.assertEquals(s.user_data, 'hellohello')
 
     def test_tpdu_decode_sample_deliver(self):
@@ -152,7 +152,7 @@ class SMS_PDU_Test(unittest.TestCase):
         s = smspdu.SMS_SUBMIT.fromPDU(
             '110a0b911614261771f00000ff18c8342800da944103d05701da17d2fdf7a3e3cf7b12',
             '447924449999')
-        ae(s.user_data, u'Hi £ € ¥ §\n äéiñoåæüyßç')
+        ae(s.user_data, u'Hi £ € ¥ §\n äéiñoåæüyßÇ')
 
 
     def test_sms_decode_businesscard(self):
@@ -295,7 +295,7 @@ class SMS_PDU_Test(unittest.TestCase):
 
     def test_mwi(self):
         p = smspdu.SMS_DELIVER.create('eKit', 'test', u'hellohello',
-            datestamp=time.mktime((2009, 8, 7, 6, 5, 4, 3, 0, 0)),
+            datestamp=time.mktime((2009, 8, 7, 6, 5, 4, 3, 0, -1)),
             tp_sri=1, tp_mms=0, tp_dcs=0xD8)
         # this hasn't actually been verified as correct
         self.assertEquals(p.toPDU(),
@@ -315,7 +315,7 @@ class SMS_PDU_Test(unittest.TestCase):
 
     def test_numericAddress(self):
         self.assertEquals(smspdu.SMS_SUBMIT.determineAddress('123'),
-            (3, 0x91, '!\xf3'))
+            (3, 0x81, '!\xf3'))
 
     def test_textAddress(self):
         from smspdu.pdu import pack7bit
