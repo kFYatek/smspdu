@@ -48,7 +48,7 @@ class PDUData(list):
         if num is not None:
             bytes = self.bytes(num)
         else:
-            bytes = self.bytes(len(self) / 2)
+            bytes = self.bytes(len(self) // 2)
         return ''.join([chr(int(c1 + c2, 16))
             for c1, c2 in zip(bytes[::2], bytes[1::2])])
 
@@ -93,7 +93,7 @@ class SMS_GENERIC(object):
         # XXX todo parse this
         if 0 and toa not in (0x91, 0x81):
             raise ValueError('expected toa of 81/91, not 0x%02x' % toa)
-        address = tpdu.octets(pl / 2 + pl % 2)
+        address = tpdu.octets(pl // 2 + pl % 2)
         if (toa & 0x70) == 0x50:
             # GSM-coded address - decode to ASCII and strip any crap
             address = unpack7bit(address, 0)
@@ -1319,7 +1319,7 @@ def pack7bit(string, headerlen=0):
         # length
         cur = 8 * headerlen
         if cur % 7:
-            n = 7 - (cur / 7) % 7
+            n = 7 - (cur // 7) % 7
         num_septets = len(string) + 1
         #print 'header length', headerlen, 'starts at', cur, 'and mod is', n
 
