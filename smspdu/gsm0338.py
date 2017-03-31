@@ -272,7 +272,7 @@ if __name__=='__main__':
     def test(s):
         r = c.decode(c.encode(s))[0]
         if r != s: print('in %r != out %r'%(s, r))
-    test(str(string.letters))
+    test(str(string.ascii_letters))
     test('\u20ac')
     test('\xa0')
     try:
