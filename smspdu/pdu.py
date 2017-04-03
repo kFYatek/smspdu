@@ -162,8 +162,11 @@ class SMS_GENERIC(object):
         # Alphanumeric number (e.g. pizza)
         else:
             c = gsm0338.Codec()
-            l, packed = pack7bit(c.encode(address, 'replace'))
+            encoded = c.encode(address, 'replace')
+            l, packed = pack7bit(encoded)
             tp_al = len(packed) * 2
+            if (tp_al * 4) // 7 > len(encoded):
+                tp_al -= 1
             tp_toa = 0xD0
         return tp_al, tp_toa, packed
 
