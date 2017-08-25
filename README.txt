@@ -4,10 +4,8 @@ To install under Python 3:
 
 python3 setup.py build install
 
--------------------------------------------------------------------------------------------------------------------
-  For example, if you want to send "silent SMS" or "message class 0". Flash messages are received by a mobile phone 
-even though it has full memory. They are not stored in the phone, they just displayed on the phone display. Tested 
-with python 3.6.2
+-----------------------------------------------------------------------------------------------------------
+  For example, if you want to send "silent SMS" or "message class 0". Flash messages are received by a mobile phone even though it has full memory. They are not stored in the phone, they just displayed on the phone display. Tested with python 3.6.2
 
 >>> TPDCS = 0x10
 >>> pdud = SMS_SUBMIT.create(' ', '0631234567', 'Hello', tp_dcs=TPDCS)
